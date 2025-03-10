@@ -1,14 +1,7 @@
 import prompts from 'prompts';
-import {
-  queryAI,
-  Message,
-  MessageCallback,
-  AIQueryError,
-  Tool as AITool,
-  QueryOptions,
-} from './ai/query';
+import { queryAI, Message, Tool as AITool, QueryOptions } from './ai/query';
 import { config } from './config';
-import { toolRegistry, Tool, ToolError } from './tools';
+import { toolRegistry, Tool, ToolError, suppressError } from './tools';
 import { contextManager } from './context';
 
 /**
@@ -320,9 +313,9 @@ export class AgentRepl {
 
   /**
    * Process a message in agent mode
-   * @param input User message
+   * @param _input User message (not directly used in this method)
    */
-  private async processAgentMessage(input: string): Promise<void> {
+  private async processAgentMessage(_input: string): Promise<void> {
     // responseText and other variables are managed in this method
     try {
       // The input is already added to messages and enhanced with context
@@ -383,9 +376,9 @@ export class AgentRepl {
               const params = JSON.parse(paramsStr);
               await this.processToolCall(name, params);
               return true;
-            } catch (e) {
+            } catch (_e) {
               if (this.debugMode) {
-                console.log('\n[Debug] Error parsing params:', e);
+                console.log('\n[Debug] Error parsing params:', _e);
                 console.log('Params string:', paramsStr);
               }
 
@@ -444,17 +437,19 @@ export class AgentRepl {
                     }
                   }
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Silently continue trying
+                suppressError(_e);
               }
             }
           }
         }
       }
-    } catch (e) {
+    } catch (_e) {
       if (this.debugMode) {
-        console.log('\n[Debug] Error parsing JSON from text:', e);
+        console.log('\n[Debug] Error parsing JSON from text:', _e);
       }
+      suppressError(_e);
     }
 
     // Method 3: Simple regex-based tool call detection
@@ -475,8 +470,9 @@ export class AgentRepl {
           const params = JSON.parse(fixedParams);
           await this.processToolCall(name, params);
           return true;
-        } catch (e) {
+        } catch (_e) {
           // If parsing fails, try to extract path directly
+          suppressError(_e);
           const pathMatch = /"path"\s*:\s*"?([^",}]+)"?/.exec(paramsText);
           if (pathMatch) {
             await this.processToolCall(name, { path: pathMatch[1] });
@@ -527,23 +523,24 @@ export class AgentRepl {
       let responseText = '';
       await queryAI(
         toolMessages,
-        (content, isDone) => {
+        (content, _isDone) => {
           responseText += content;
 
           // Don't print the JSON directly
-          if (isDone && responseText) {
+          if (_isDone && responseText) {
             try {
               if (this.debugMode) {
                 console.log('\n[Debug] Full fallback response:', responseText);
               }
 
               // Try various parsing strategies
-              this.processToolCallsInText(responseText).catch(e => {
-                console.error('Error processing fallback tool call:', e);
+              this.processToolCallsInText(responseText).catch(_e => {
+                console.error('Error processing fallback tool call:', _e);
               });
-            } catch (e) {
+            } catch (_e) {
               // Not JSON, so print directly
               console.log(responseText);
+              suppressError(_e);
             }
           }
         },
@@ -602,7 +599,7 @@ export class AgentRepl {
       let followUpResponse = '';
       await queryAI(
         this.messages,
-        (content, isDone) => {
+        (content, _isDone) => {
           process.stdout.write(content);
           followUpResponse += content;
         },
@@ -636,7 +633,7 @@ export class AgentRepl {
       let errorResponse = '';
       await queryAI(
         this.messages,
-        (content, isDone) => {
+        (content, _isDone) => {
           process.stdout.write(content);
           errorResponse += content;
         },

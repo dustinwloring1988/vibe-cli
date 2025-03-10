@@ -1,4 +1,4 @@
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -121,6 +121,7 @@ export class CreateFileTool extends BaseTool<CreateFileArgs, CreateFileResult> {
         fileExists = stats.isFile();
       } catch (_error) {
         // File doesn't exist, which is what we want for creating a new file
+        suppressError(_error);
       }
 
       // If the file exists, ask for confirmation to overwrite

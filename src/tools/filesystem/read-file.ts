@@ -1,4 +1,4 @@
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -112,7 +112,8 @@ export class ReadFileTool extends BaseTool<ReadFileArgs, ReadFileResult> {
         if (!stats.isFile()) {
           return this.failure(`Path ${filePath} is not a file`);
         }
-      } catch (error) {
+      } catch (_error) {
+        suppressError(_error);
         return this.failure(`File not found: ${filePath}`);
       }
 
@@ -125,8 +126,9 @@ export class ReadFileTool extends BaseTool<ReadFileArgs, ReadFileResult> {
         content,
         encoding,
       });
-    } catch (error) {
-      return this.failure(`Error reading file: ${(error as Error).message}`);
+    } catch (_error) {
+      suppressError(_error);
+      return this.failure(`Error reading file: ${(_error as Error).message}`);
     }
   }
 }

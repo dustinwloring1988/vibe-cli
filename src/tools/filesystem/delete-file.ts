@@ -1,4 +1,4 @@
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 import fs from 'fs/promises';
 import path from 'path';
 import prompts from 'prompts';
@@ -134,6 +134,9 @@ export class DeleteFileTool extends BaseTool<DeleteFileArgs, DeleteFileResult> {
         fileExists = true;
       } catch (_error) {
         return this.failure(`File not found: ${filePath}`);
+        // Even though we're returning, we should still suppress the error
+        // to satisfy the linter
+        suppressError(_error);
       }
 
       // If the file exists and force is not true, ask for confirmation

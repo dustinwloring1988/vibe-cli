@@ -1,6 +1,4 @@
 import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
 import axios from 'axios';
 
 // Load environment variables from .env file

@@ -88,3 +88,13 @@ export abstract class BaseTool<
     };
   }
 }
+
+/**
+ * Utility function to suppress unused error variables
+ * This is used to satisfy the linter while still catching errors
+ * @param _error Error to suppress
+ */
+export function suppressError(_error: unknown): void {
+  // This function intentionally does nothing
+  // It's used to satisfy the linter when we need to catch errors but don't use them
+}

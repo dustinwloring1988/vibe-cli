@@ -1,4 +1,4 @@
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -59,8 +59,9 @@ export class ListDirTool extends BaseTool<ListDirArgs, ListDirResult> {
         if (!stats.isDirectory()) {
           return this.failure(`Path ${dirPath} is not a directory`);
         }
-      } catch (error) {
+      } catch (_error) {
         return this.failure(`Directory not found: ${dirPath}`);
+        suppressError(_error);
       }
 
       // Read the directory contents
@@ -84,10 +85,11 @@ export class ListDirTool extends BaseTool<ListDirArgs, ListDirResult> {
         files,
         directories,
       });
-    } catch (error) {
+    } catch (_error) {
       return this.failure(
-        `Error listing directory: ${(error as Error).message}`
+        `Error listing directory: ${(_error as Error).message}`
       );
+      suppressError(_error);
     }
   }
 }

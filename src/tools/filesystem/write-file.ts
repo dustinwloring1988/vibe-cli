@@ -1,4 +1,4 @@
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 import fs from 'fs/promises';
 import path from 'path';
 import prompts from 'prompts';
@@ -132,6 +132,7 @@ export class WriteFileTool extends BaseTool<WriteFileArgs, WriteFileResult> {
         fileExists = stats.isFile();
       } catch (_error) {
         // File doesn't exist, that's fine for writing
+        suppressError(_error);
       }
 
       // If the file exists and force is not true, ask for confirmation

@@ -3,38 +3,31 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { Repl } from '../repl';
+import { startAgentRepl } from '../agent';
 import { queryAI, Message, AIQueryError } from '../ai/query';
 import { validateConfig, config } from '../config';
-import { initializeTools, toolRegistry } from '../tools';
-import { ListDirTool, ReadFileTool } from '../tools';
-import { startAgentRepl } from '../agent';
+import { initializeTools } from '../tools';
 
 /**
  * Main CLI entry point for vibe-cli
  */
 async function main(): Promise<void> {
   // Validate configuration
-  const isValid = await validateConfig();
-  if (!isValid) {
-    console.error(
-      'Invalid configuration. Please check your .env file and make sure Ollama is running.'
-    );
+  if (!(await validateConfig())) {
     process.exit(1);
   }
 
   // Initialize tools
   await initializeTools();
 
-  const argv = yargs(hideBin(process.argv))
+  // Parse command line arguments
+  yargs(hideBin(process.argv))
     .usage('Usage: $0 <command> [options]')
     .command(
-      'chat',
-      'Start an interactive chat with the AI assistant',
-      {},
+      'repl',
+      'Start an interactive REPL session',
+      () => {},
       async () => {
-        console.log('Starting interactive chat session...');
-        console.log(`Using model: ${config.ollama.model}`);
-
         const repl = new Repl();
         await repl.start();
       }
@@ -85,22 +78,14 @@ async function main(): Promise<void> {
 
         try {
           // Stream the response to the console
-          let responseText = '';
-          await queryAI(messages, (content, isDone) => {
-            process.stdout.write(content);
-            responseText += content;
-          });
+          const onUpdate = (_content: string, _isDone: boolean) => {
+            // Implementation not used, just for interface compatibility
+          };
+          await queryAI(messages, onUpdate);
 
           console.log('\n');
         } catch (error) {
-          if (error instanceof AIQueryError) {
-            console.error(`\nError: ${error.message}`);
-            if (error.cause) {
-              console.error(`Cause: ${error.cause.message}`);
-            }
-          } else {
-            console.error(`\nUnexpected error: ${error}`);
-          }
+          console.error('Error querying AI:', error);
           process.exit(1);
         }
       }

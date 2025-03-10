@@ -21,3 +21,4 @@
 - Integrated context manager to enhance AI messages with project instructions
 - Updated README with current features, correct GitHub username, and improved documentation
 - Implemented REPL command history navigation with arrow keys, session metadata tracking, and command recall functionality; created a persistent SessionManager.
+- Implemented file management tools (writeFile, createFile, deleteFile) with security checks, permission controls, and confirmation prompts.

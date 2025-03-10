@@ -1,4 +1,7 @@
-import path from 'path';
+/**
+ * Tool loader for dynamic loading of tools from modules
+ */
+// Remove unused import if not needed
 import { toolRegistry } from './registry';
 import { ListDirTool } from './filesystem/list-dir';
 import { ReadFileTool } from './filesystem/read-file';

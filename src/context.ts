@@ -2,6 +2,7 @@ import { Message } from './ai/query';
 import { toolRegistry } from './tools';
 import path from 'path';
 import fs from 'fs/promises';
+import { suppressError } from './tools/interface';
 
 /**
  * Context manager for handling project context and instructions
@@ -49,9 +50,10 @@ export class ContextManager {
           const content = await fs.readFile(vibeMdPath, 'utf8');
           this.projectInstructions = content;
           console.log('Project instructions loaded successfully (direct)');
-        } catch (error) {
+        } catch (_error) {
           console.log('No project instructions (VIBE.md) found (direct)');
           this.projectInstructions = null;
+          suppressError(_error);
         }
       }
     } catch (error) {

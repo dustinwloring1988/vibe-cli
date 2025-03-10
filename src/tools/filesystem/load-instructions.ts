@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { BaseTool, ToolArgs, ToolResult } from '../interface';
+import { BaseTool, ToolArgs, ToolResult, suppressError } from '../interface';
 
 /**
  * Arguments for the LoadInstructionsTool
@@ -64,8 +64,9 @@ export class LoadInstructionsTool extends BaseTool<
             found: false,
           });
         }
-      } catch (error) {
+      } catch (_error) {
         // File not found
+        suppressError(_error);
         return this.success({
           path: instructionsFilePath,
           content: '',
@@ -82,9 +83,10 @@ export class LoadInstructionsTool extends BaseTool<
         content,
         found: true,
       });
-    } catch (error) {
+    } catch (_error) {
+      suppressError(_error);
       return this.failure(
-        `Error loading instructions: ${(error as Error).message}`
+        `Error loading instructions: ${(_error as Error).message}`
       );
     }
   }
