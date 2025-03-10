@@ -14,3 +14,6 @@ export * from './loader';
 // Export filesystem tools
 export { ListDirTool } from './filesystem/list-dir';
 export { ReadFileTool } from './filesystem/read-file';
+export { WriteFileTool } from './filesystem/write-file';
+export { CreateFileTool } from './filesystem/create-file';
+export { DeleteFileTool } from './filesystem/delete-file';

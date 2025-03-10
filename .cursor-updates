@@ -20,3 +20,4 @@
 - Developed loader for project instructions from VIBE.md file
 - Integrated context manager to enhance AI messages with project instructions
 - Updated README with current features, correct GitHub username, and improved documentation
+- Implemented REPL command history navigation with arrow keys, session metadata tracking, and command recall functionality; created a persistent SessionManager.
