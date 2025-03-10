@@ -2,6 +2,7 @@ import { Tool, ToolError } from './interface';
 import path from 'path';
 import fs from 'fs/promises';
 import { config } from '../config';
+import { logger } from '../logging';
 
 /**
  * Registry for tools
@@ -66,21 +67,44 @@ export class ToolRegistry {
   ): Promise<T> {
     const tool = this.tools.get(name);
     if (!tool) {
-      throw new ToolError(`Tool "${name}" not found`, name);
+      const error = `Tool "${name}" not found`;
+      logger.error(error, { toolName: name });
+      throw new ToolError(error, name);
     }
 
+    const startTime = Date.now();
+    let result;
+
     try {
-      const result = await tool.execute(args);
+      result = await tool.execute(args);
+      const durationMs = Date.now() - startTime;
+
+      // Log tool execution result
+      logger.logToolExecution(name, args, result, durationMs);
+
       if (!result.success) {
         throw new ToolError(result.error || 'Unknown error', name);
       }
       return result.data as T;
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Log error if not already logged
+      if (!result) {
+        logger.logToolExecution(
+          name,
+          args,
+          { success: false, error: errorMsg },
+          durationMs
+        );
+      }
+
       if (error instanceof ToolError) {
         throw error;
       }
       throw new ToolError(
-        `Error executing tool "${name}": ${(error as Error).message}`,
+        `Error executing tool "${name}": ${errorMsg}`,
         name,
         error as Error
       );

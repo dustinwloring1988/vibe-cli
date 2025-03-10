@@ -9,4 +9,9 @@ export * from './agent';
 export * from './config';
 export * from './context';
 export * from './tools';
+export * from './logging';
 // TODO: Export additional functionality as it's implemented
+
+// Initialize global error handlers
+import { ErrorHandler } from './logging';
+ErrorHandler.setupGlobalHandlers();

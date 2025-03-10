@@ -1,4 +1,5 @@
 - Initialized Node.js project with TypeScript, ESLint, and Prettier
+- Fixed issue with jumbled text in agent responses by properly handling streaming output
 - Updated README documentation to include prompt customization details and improved project structure overview
 - Created CLI entry point with yargs for command handling
 - Implemented basic REPL interface with prompts library
