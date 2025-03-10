@@ -28,14 +28,38 @@ export class AIQueryError extends Error {
 }
 
 /**
+ * Tool definition for AI function calling
+ */
+export interface Tool {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+}
+
+/**
+ * Query options for the AI
+ */
+export interface QueryOptions {
+  model?: string;
+  temperature?: number;
+  topP?: number;
+  format?: string;
+  tools?: Tool[];
+  toolChoice?: string | Record<string, any>;
+  debugMode?: boolean;
+}
+
+/**
  * Query the AI with a set of messages and stream back the response
  * @param messages Array of messages to send to the AI
  * @param onUpdate Callback function for streaming responses
+ * @param options Options for the AI query
  * @returns Promise resolving to the full AI response
  */
 export async function queryAI(
   messages: Message[],
-  onUpdate?: MessageCallback
+  onUpdate?: MessageCallback,
+  options?: QueryOptions
 ): Promise<string> {
   // Use the placeholder implementation if we're not in a production environment
   if (process.env.NODE_ENV === 'test') {
@@ -46,15 +70,41 @@ export async function queryAI(
     const { apiUrl, model } = config.ollama;
     const endpoint = `${apiUrl}/chat`;
 
+    const debugMode = options?.debugMode || false;
+
     // Format messages for Ollama API
     const requestData = {
-      model,
+      model: options?.model || model,
       messages: messages.map(m => ({
         role: m.role,
         content: m.content,
       })),
       stream: true,
+      temperature: options?.temperature || 0.7,
+      top_p: options?.topP || 0.9,
+      options: {
+        num_ctx: 4096, // Increased context window
+      },
     };
+
+    // Add tools if specified
+    if (options?.tools && options.tools.length > 0) {
+      // Only add format if we're using tools
+      if (options?.format) {
+        Object.assign(requestData, { format: options.format });
+      }
+
+      // Add tools and tool choice
+      Object.assign(requestData, {
+        tools: options.tools,
+        // Allow the model to decide when to use tools or a specific tool
+        ...(options?.toolChoice ? { tool_choice: options.toolChoice } : {}),
+      });
+    }
+
+    if (debugMode || config.app.debug) {
+      console.log('API Request:', JSON.stringify(requestData, null, 2));
+    }
 
     // Make streaming request to Ollama API
     const response = await axios.post(endpoint, requestData, {
@@ -70,12 +120,20 @@ export async function queryAI(
           // Each chunk may contain multiple JSON objects
           const chunkString = chunk.toString();
 
+          if (debugMode) {
+            console.log('Raw chunk:', chunkString);
+          }
+
           // Split by newlines and process each event
           const events = chunkString.split('\n').filter(Boolean);
 
           for (const event of events) {
             try {
               const data = JSON.parse(event);
+
+              if (debugMode) {
+                console.log('Parsed data:', JSON.stringify(data, null, 2));
+              }
 
               if (data.error) {
                 throw new Error(data.error);

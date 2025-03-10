@@ -14,3 +14,6 @@
 - Implemented agent mode where AI can autonomously use tools
 - Created tool call format parsing and execution in agent mode
 - Added conversation history management with tool calls and results
+- Enhanced agent mode with proper JSON tool calling for llama3.1:latest model
+- Implemented multiple fallback approaches for tool calling
+- Added debug mode for diagnosing AI interactions
