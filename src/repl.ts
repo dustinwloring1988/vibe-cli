@@ -1,5 +1,6 @@
 import prompts from 'prompts';
-import { queryAI, Message, MessageCallback } from './ai/query';
+import { queryAI, Message, MessageCallback, AIQueryError } from './ai/query';
+import { config } from './config';
 
 /**
  * REPL (Read-Eval-Print Loop) interface for interactive sessions
@@ -31,6 +32,9 @@ export class Repl {
     this.exitRequested = false;
 
     console.log('Welcome to Vibe CLI! Type "exit" or press Ctrl+C to exit.\n');
+    console.log(
+      `Using model: ${config.ollama.model} at ${config.ollama.apiUrl}\n`
+    );
 
     try {
       await this.loop();
@@ -115,14 +119,33 @@ export class Repl {
         responseText += content;
       };
 
-      // Query the AI with our messages
-      await queryAI(this.messages, onUpdate);
+      try {
+        // Query the AI with our messages
+        await queryAI(this.messages, onUpdate);
 
-      // Add the AI response to the conversation history
-      this.messages.push({
-        role: 'assistant',
-        content: responseText,
-      });
+        // Add the AI response to the conversation history
+        this.messages.push({
+          role: 'assistant',
+          content: responseText,
+        });
+      } catch (error) {
+        console.error('\n\nError communicating with AI:');
+        if (error instanceof AIQueryError) {
+          console.error(`Error: ${error.message}`);
+          if (error.cause) {
+            console.error(`Cause: ${error.cause.message}`);
+          }
+        } else {
+          console.error(`Unexpected error: ${error}`);
+        }
+
+        // Add an error message to the conversation history
+        this.messages.push({
+          role: 'assistant',
+          content:
+            'Sorry, I encountered an error processing your request. Please try again.',
+        });
+      }
 
       console.log('\n'); // Add a newline after the response
     } catch (error) {

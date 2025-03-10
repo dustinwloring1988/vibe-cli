@@ -3,12 +3,22 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { Repl } from '../repl';
-import { queryAI, Message } from '../ai/query';
+import { queryAI, Message, AIQueryError } from '../ai/query';
+import { validateConfig, config } from '../config';
 
 /**
  * Main CLI entry point for vibe-cli
  */
 async function main(): Promise<void> {
+  // Validate configuration
+  const isValid = await validateConfig();
+  if (!isValid) {
+    console.error(
+      'Invalid configuration. Please check your .env file and make sure Ollama is running.'
+    );
+    process.exit(1);
+  }
+
   const argv = yargs(hideBin(process.argv))
     .usage('Usage: $0 <command> [options]')
     .command(
@@ -17,6 +27,8 @@ async function main(): Promise<void> {
       {},
       async () => {
         console.log('Starting interactive chat session...');
+        console.log(`Using model: ${config.ollama.model}`);
+
         const repl = new Repl();
         await repl.start();
       }
@@ -30,9 +42,15 @@ async function main(): Promise<void> {
           demandOption: true,
           describe: 'The prompt to send to the AI assistant',
         },
+        model: {
+          type: 'string',
+          describe: 'The model to use for the query (defaults to config)',
+          default: config.ollama.model,
+        },
       },
       async argv => {
         console.log(`Querying AI with prompt: ${argv.prompt}`);
+        console.log(`Using model: ${argv.model || config.ollama.model}`);
 
         const messages: Message[] = [
           {
@@ -48,14 +66,67 @@ async function main(): Promise<void> {
 
         console.log('\n[AI Response]:\n');
 
-        // Stream the response to the console
-        let responseText = '';
-        await queryAI(messages, (content, isDone) => {
-          process.stdout.write(content);
-          responseText += content;
-        });
+        try {
+          // Stream the response to the console
+          let responseText = '';
+          await queryAI(messages, (content, isDone) => {
+            process.stdout.write(content);
+            responseText += content;
+          });
 
-        console.log('\n');
+          console.log('\n');
+        } catch (error) {
+          if (error instanceof AIQueryError) {
+            console.error(`\nError: ${error.message}`);
+            if (error.cause) {
+              console.error(`Cause: ${error.cause.message}`);
+            }
+          } else {
+            console.error(`\nUnexpected error: ${error}`);
+          }
+          process.exit(1);
+        }
+      }
+    )
+    .command(
+      'test-connection',
+      'Test the connection to the Ollama API',
+      {},
+      async () => {
+        console.log('Testing connection to Ollama API...');
+        console.log(`API URL: ${config.ollama.apiUrl}`);
+        console.log(`Model: ${config.ollama.model}`);
+
+        try {
+          const testMessage: Message[] = [
+            {
+              role: 'system',
+              content: 'You are a helpful assistant.',
+            },
+            {
+              role: 'user',
+              content:
+                'Respond with a very short message to test connectivity.',
+            },
+          ];
+
+          console.log('Sending test query...');
+          const response = await queryAI(testMessage);
+          console.log('Response received successfully!');
+          console.log(`Response: "${response}"`);
+          console.log('Connection test successful!');
+        } catch (error) {
+          console.error('Connection test failed!');
+          if (error instanceof AIQueryError) {
+            console.error(`Error: ${error.message}`);
+            if (error.cause) {
+              console.error(`Cause: ${error.cause.message}`);
+            }
+          } else {
+            console.error(`Unexpected error: ${error}`);
+          }
+          process.exit(1);
+        }
       }
     )
     .option('verbose', {

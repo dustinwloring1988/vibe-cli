@@ -3,3 +3,7 @@
 - Implemented basic REPL interface with prompts library
 - Developed minimal queryAI function with streaming capability
 - Set up project structure and documentation
+- Integrated Ollama API for AI responses
+- Added configuration management with environment variables
+- Implemented error handling for AI queries
+- Added test-connection command for verifying Ollama connectivity
