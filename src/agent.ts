@@ -504,11 +504,11 @@ export class AgentRepl {
       let responseText = '';
       await queryAI(
         toolMessages,
-        (content, _isDone) => {
+        (content, isDone) => {
           responseText += content;
 
-          // Don't print the JSON directly
-          if (_isDone && responseText) {
+          // Only process and display when fully done
+          if (isDone && responseText) {
             try {
               if (this.debugMode) {
                 console.log('\n[Debug] Full fallback response:', responseText);
@@ -517,6 +517,8 @@ export class AgentRepl {
               // Try various parsing strategies
               this.processToolCallsInText(responseText).catch(_e => {
                 console.error('Error processing fallback tool call:', _e);
+                // If we can't parse tool calls, just display the text
+                console.log(responseText);
               });
             } catch (_e) {
               // Not JSON, so print directly
@@ -580,9 +582,14 @@ export class AgentRepl {
       let followUpResponse = '';
       await queryAI(
         this.messages,
-        (content, _isDone) => {
-          process.stdout.write(content);
+        (content, isDone) => {
+          // Instead of writing to stdout directly, accumulate the response
+          // and only print it when done to avoid jumbled text
           followUpResponse += content;
+
+          if (isDone) {
+            console.log(followUpResponse);
+          }
         },
         { debugMode: this.debugMode }
       );
