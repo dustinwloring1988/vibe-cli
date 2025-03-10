@@ -17,3 +17,5 @@
 - Enhanced agent mode with proper JSON tool calling for llama3.1:latest model
 - Implemented multiple fallback approaches for tool calling
 - Added debug mode for diagnosing AI interactions
+- Developed loader for project instructions from VIBE.md file
+- Integrated context manager to enhance AI messages with project instructions

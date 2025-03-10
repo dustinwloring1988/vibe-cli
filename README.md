@@ -5,7 +5,9 @@ A terminal-based AI coding agent powered by Ollama models, designed to assist wi
 ## Features
 
 - Interactive chat with AI assistant
-- One-off queries to the AI assistant
+- Agent mode with tool capabilities
+- Project context awareness via VIBE.md
+- File system operations with security controls
 - Streaming responses for real-time feedback
 - Simple and intuitive command-line interface
 
@@ -15,12 +17,13 @@ A terminal-based AI coding agent powered by Ollama models, designed to assist wi
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
+- Ollama (running locally or on a remote server)
 
 ### Install from source
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/vibe-cli.git
+   git clone https://github.com/dustinwloring1988/vibe-cli.git
    cd vibe-cli
    ```
 
@@ -29,12 +32,18 @@ A terminal-based AI coding agent powered by Ollama models, designed to assist wi
    npm install
    ```
 
-3. Build the project:
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit the `.env` file to configure your Ollama API URL and model.
+
+4. Build the project:
    ```bash
    npm run build
    ```
 
-4. Link the package globally:
+5. Link the package globally:
    ```bash
    npm link
    ```
@@ -51,14 +60,33 @@ vibe chat
 
 In the chat session, you can:
 - Type your questions or commands
-- Press Ctrl+C or type `exit` to end the session
+- Press Ctrl+C or type `/exit` to end the session
+- Type `/tools` to see available tools
+- Type `/tool <name> [args]` to execute a tool
 
-### One-off Query
+### Agent Mode
 
-Send a one-off query to the AI assistant:
+Start an interactive session with an AI assistant that can use tools autonomously:
 
 ```bash
-vibe query "How do I create a React component?"
+vibe agent
+```
+
+In agent mode, the AI can:
+- Access the file system to read files and list directories
+- Provide context-aware assistance based on your project
+- Automatically use tools when needed without explicit commands
+
+### Project Context
+
+Create a `VIBE.md` file in your project root to provide context-specific instructions to the AI assistant. This helps the AI understand your project and provide more relevant assistance.
+
+### Test Ollama Connection
+
+Verify your connection to the Ollama server:
+
+```bash
+vibe test-connection
 ```
 
 ### Help
@@ -90,12 +118,29 @@ vibe-cli/
 │   ├── bin/
 │   │   └── vibe.ts        # CLI entry point
 │   ├── tools/             # Tool implementations
+│   │   ├── filesystem/    # Filesystem tools
+│   │   ├── interface.ts   # Tool interface definitions
+│   │   ├── registry.ts    # Tool registry 
+│   │   └── loader.ts      # Tool loading system
+│   ├── context.ts         # Project context management
+│   ├── config.ts          # App configuration
+│   ├── agent.ts           # Agent REPL implementation
 │   ├── repl.ts            # Interactive REPL implementation
 │   └── index.ts           # Main exports
+├── VIBE.md                # Project instructions for AI
 ├── dist/                  # Compiled output
 ├── tsconfig.json          # TypeScript configuration
 └── package.json           # Project metadata
 ```
+
+## Configuration
+
+The application can be configured using environment variables:
+
+- `OLLAMA_API_URL` - URL of the Ollama API (default: `http://localhost:11434/api`)
+- `OLLAMA_MODEL` - Name of the Ollama model to use (default: `llama3`)
+- `DEBUG` - Enable debug mode (default: `false`)
+- `LOG_LEVEL` - Set logging level (default: `info`)
 
 ## License
 
