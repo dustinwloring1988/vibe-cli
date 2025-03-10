@@ -2,6 +2,7 @@ import prompts from 'prompts';
 import { queryAI, Message, MessageCallback, AIQueryError } from './ai/query';
 import { config } from './config';
 import { toolRegistry, ToolError } from './tools';
+import { contextManager } from './context';
 
 /**
  * REPL (Read-Eval-Print Loop) interface for interactive sessions
@@ -32,12 +33,15 @@ export class Repl {
     this.isRunning = true;
     this.exitRequested = false;
 
+    // Initialize the context manager
+    await contextManager.initialize();
+
     console.log('Welcome to Vibe CLI! Type "exit" or press Ctrl+C to exit.\n');
     console.log(
       `Using model: ${config.ollama.model} at ${config.ollama.apiUrl}\n`
     );
     console.log('Available commands:');
-    console.log('  /tool <name> [args] - Execute a tool');
+    console.log('  /tool <n> [args] - Execute a tool');
     console.log('  /tools              - List available tools');
     console.log('  /clear              - Clear the conversation history');
     console.log('  /exit               - Exit the REPL\n');
@@ -98,7 +102,7 @@ export class Repl {
       if (input.startsWith('/')) {
         await this.processCommand(input);
       } else {
-        await this.processInput(input);
+        await this.processMessage(input);
       }
     }
   }
@@ -238,63 +242,42 @@ export class Repl {
   }
 
   /**
-   * Process user input and generate a response
-   * @param input User input string
+   * Process a user message
+   * @param prompt User message
    */
-  private async processInput(input: string): Promise<void> {
-    if (!input.trim()) {
-      return;
-    }
+  private async processMessage(prompt: string): Promise<void> {
+    // Create a variable to store the response text
+    let responseText = '';
+
+    // Define an update callback
+    const onUpdate = (content: string, isDone: boolean) => {
+      responseText = content;
+    };
 
     try {
       // Add user message to the conversation history
       this.messages.push({
         role: 'user',
-        content: input,
+        content: prompt,
       });
 
-      console.log('\n[AI is thinking...]\n');
+      // Use the context manager to enhance the messages with project context
+      const enhancedMessages = contextManager.enhanceMessages(this.messages);
 
-      let responseText = '';
+      // Query the AI
+      const aiResponse = await queryAI(enhancedMessages, onUpdate);
 
-      // Define callback for streaming updates
-      const onUpdate: MessageCallback = (content, isDone) => {
-        // Print the content character by character
-        process.stdout.write(content);
-        responseText += content;
-      };
-
-      try {
-        // Query the AI with our messages
-        await queryAI(this.messages, onUpdate);
-
-        // Add the AI response to the conversation history
-        this.messages.push({
-          role: 'assistant',
-          content: responseText,
-        });
-      } catch (error) {
-        console.error('\n\nError communicating with AI:');
-        if (error instanceof AIQueryError) {
-          console.error(`Error: ${error.message}`);
-          if (error.cause) {
-            console.error(`Cause: ${error.cause.message}`);
-          }
-        } else {
-          console.error(`Unexpected error: ${error}`);
-        }
-
-        // Add an error message to the conversation history
-        this.messages.push({
-          role: 'assistant',
-          content:
-            'Sorry, I encountered an error processing your request. Please try again.',
-        });
-      }
-
-      console.log('\n'); // Add a newline after the response
+      // Add assistant message to the conversation history
+      this.messages.push({
+        role: 'assistant',
+        content: aiResponse,
+      });
     } catch (error) {
-      console.error('Error processing input:', error);
+      if (error instanceof AIQueryError) {
+        console.error('Error querying AI:', error.message);
+      } else {
+        console.error('Unexpected error:', error);
+      }
     }
   }
 }

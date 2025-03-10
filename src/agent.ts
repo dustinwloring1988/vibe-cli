@@ -9,6 +9,23 @@ import {
 } from './ai/query';
 import { config } from './config';
 import { toolRegistry, Tool, ToolError } from './tools';
+import { contextManager } from './context';
+
+/**
+ * Start the Agent REPL
+ */
+export async function startAgentRepl(): Promise<void> {
+  try {
+    // Initialize the context manager
+    await contextManager.initialize();
+
+    // Create and start the agent REPL
+    const agent = new AgentRepl();
+    await agent.start();
+  } catch (error) {
+    console.error('Error starting agent REPL:', error);
+  }
+}
 
 /**
  * Agent REPL - A REPL that allows the AI to use tools autonomously
@@ -128,6 +145,9 @@ export class AgentRepl {
     console.log('  /exit    - Exit the REPL\n');
 
     try {
+      // Initialize the context manager
+      await contextManager.initialize();
+
       await this.loop();
     } catch (error) {
       console.error('Error in Agent REPL session:', error);
@@ -276,90 +296,47 @@ export class AgentRepl {
       return;
     }
 
+    // Add user message to the conversation history
+    this.messages.push({
+      role: 'user',
+      content: input,
+    });
+
+    console.log('\n[AI is thinking...]\n');
+
+    // Use context manager to enhance messages with project context
+    this.messages = contextManager.enhanceMessages(this.messages);
+
+    // Try using the standard approach
     try {
-      // Add user message to the conversation history
-      this.messages.push({
-        role: 'user',
-        content: input,
-      });
-
-      console.log('\n[AI is thinking...]\n');
-
-      // Try using the standard approach first
-      await this.getAIResponse();
-
-      console.log('\n'); // Add a newline after the response
+      // Process the agent message with enhanced context
+      await this.processAgentMessage(input);
     } catch (error) {
       console.error('Error processing input:', error);
     }
+
+    console.log('\n'); // Add a newline after the response
   }
 
   /**
-   * Get AI response with potential tool calls
+   * Process a message in agent mode
+   * @param input User message
    */
-  private async getAIResponse(): Promise<void> {
-    let responseText = '';
-    let responseFailed = false;
-
+  private async processAgentMessage(input: string): Promise<void> {
+    // responseText and other variables are managed in this method
     try {
-      // Define callback for streaming updates
-      const onUpdate: MessageCallback = (content, isDone) => {
-        responseText += content;
-        process.stdout.write(content);
-
-        // For debugging - show actual content received
-        if (this.debugMode && content) {
-          console.log('\n[Debug] Content chunk:', content);
-        }
-      };
-
-      // Define query options - don't use JSON format mode initially
-      // This allows more natural responses when tools aren't needed
-      const queryOptions: QueryOptions = {
-        temperature: 0.2, // Lower temperature for more predictable outputs
-        debugMode: this.debugMode,
-      };
-
-      // Query the AI with our messages
-      await queryAI(this.messages, onUpdate, queryOptions);
-
-      // Check for tool calls in text format
-      const toolCallsDetected = await this.processToolCallsInText(responseText);
-
-      if (!toolCallsDetected) {
-        // No tool calls were detected, add the response to history
-        this.messages.push({
-          role: 'assistant',
-          content: responseText,
-        });
-      }
+      // The input is already added to messages and enhanced with context
+      // Just use the existing method for getting AI response
+      await this.getAIResponseWithToolCallsDirectly();
     } catch (error) {
-      responseFailed = true;
-      console.error('\n\nError communicating with AI:');
-      if (error instanceof AIQueryError) {
-        console.error(`Error: ${error.message}`);
-        if (error.cause) {
-          console.error(`Cause: ${error.cause.message}`);
-        }
-      } else {
-        console.error(`Unexpected error: ${error}`);
-      }
+      console.error('\n\nError in agent mode:', error);
 
-      // Try the fallback approach if the first attempt failed
-      if (responseFailed) {
-        try {
-          await this.getAIResponseWithToolCallsDirectly();
-        } catch (fallbackError) {
-          console.error('\nFallback approach also failed:', fallbackError);
-
-          // Add an error message to the conversation history
-          this.messages.push({
-            role: 'assistant',
-            content:
-              'Sorry, I encountered an error processing your request. Please try again.',
-          });
-        }
-      }
+      // Add an error message to the conversation history
+      this.messages.push({
+        role: 'assistant',
+        content:
+          'Sorry, I encountered an error processing your request. Please try again.',
+      });
     }
   }
 

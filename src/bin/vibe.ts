@@ -5,13 +5,9 @@ import { hideBin } from 'yargs/helpers';
 import { Repl } from '../repl';
 import { queryAI, Message, AIQueryError } from '../ai/query';
 import { validateConfig, config } from '../config';
-import {
-  initializeTools,
-  toolRegistry,
-  ListDirTool,
-  ReadFileTool,
-} from '../tools';
-import { AgentRepl } from '../agent';
+import { initializeTools, toolRegistry } from '../tools';
+import { ListDirTool, ReadFileTool } from '../tools';
+import { startAgentRepl } from '../agent';
 
 /**
  * Main CLI entry point for vibe-cli
@@ -48,11 +44,10 @@ async function main(): Promise<void> {
       'Start an interactive session with an AI agent that can use tools',
       {},
       async () => {
-        console.log('Starting AI agent session...');
+        console.log('Starting agent session with tools...');
         console.log(`Using model: ${config.ollama.model}`);
 
-        const agent = new AgentRepl();
-        await agent.start();
+        await startAgentRepl();
       }
     )
     .command(
