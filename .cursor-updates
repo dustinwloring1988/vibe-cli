@@ -33,3 +33,4 @@
 - Cleaned up .cursor-tasks.md by removing time estimate, priority, and focus tags
 - Implemented customizable REPL prompt system with color indicators, configurable styles, and visual state indicators (ready/busy/error)
 - **2025-03-10**: Implemented comprehensive logging system with structured format and log rotation. Added centralized error handling with user-friendly messages.
+- **2025-03-10**: Implemented global configuration system with JSON storage in ~/.viberc.json and session persistence with automated backups.
