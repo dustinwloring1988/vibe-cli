@@ -33,7 +33,7 @@ export class AIQueryError extends Error {
 export interface Tool {
   name: string;
   description: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface QueryOptions {
   topP?: number;
   format?: string;
   tools?: Tool[];
-  toolChoice?: string | Record<string, any>;
+  toolChoice?: string | Record<string, unknown>;
   debugMode?: boolean;
 }
 

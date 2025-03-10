@@ -59,7 +59,14 @@ export class AgentRepl {
    * Convert our tool to the format expected by the AI
    */
   private convertToAITool(tool: Tool): AITool {
-    let parameters: Record<string, any> = {
+    // Define a JSONSchema structure for parameters
+    type JSONSchemaObject = Record<string, unknown> & {
+      type: string;
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+
+    let parameters: JSONSchemaObject = {
       type: 'object',
       properties: {},
       required: [],
@@ -558,7 +565,7 @@ export class AgentRepl {
    */
   private async processToolCall(
     toolName: string,
-    parameters: any
+    parameters: Record<string, unknown>
   ): Promise<void> {
     try {
       if (!toolName || !toolRegistry.has(toolName)) {
