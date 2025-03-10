@@ -15,6 +15,8 @@ A terminal-based AI coding agent powered by Ollama models, designed to assist wi
 - Session persistence with automatic backups
 - Comprehensive logging system with log rotation
 - Extensive error handling and recovery
+- Robust testing suite with Jest and TypeScript
+- Code quality enforcement with ESLint, Prettier and pre-commit hooks
 
 ## Quick Start Guide
 
@@ -322,7 +324,22 @@ Vibe CLI includes a comprehensive logging system:
 - `npm run lint:fix` - Run ESLint with auto-fix
 - `npm run format` - Format code with Prettier
 - `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:ci` - Run tests in CI mode with coverage
 - `npm run test:logs` - Test logging functionality
+
+### Code Quality and Testing
+
+Vibe CLI includes a robust testing and code quality setup:
+
+- **ESLint & Prettier**: Enforces code style and catches potential issues
+- **Husky**: Manages Git hooks to ensure code quality before commits
+- **lint-staged**: Runs linters and formatters on staged files during commit
+- **Jest**: Framework for unit testing with TypeScript support
+- **Pre-commit Hooks**: Automatically runs linters and formatters before each commit
+
+The project is set up with a pre-commit hook that runs ESLint and Prettier on staged files to ensure code quality. Additionally, Jest is configured to work with TypeScript and ES modules for unit testing.
 
 ### Project Structure
 
@@ -343,6 +360,9 @@ vibe-cli/
 │   │   ├── interface.ts   # Tool interface definitions
 │   │   ├── registry.ts    # Tool registry 
 │   │   └── loader.ts      # Tool loading system
+│   ├── __tests__/         # Unit tests
+│   │   ├── tools/         # Tests for tools
+│   │   └── config.test.ts # Tests for configuration
 │   ├── context.ts         # Project context management
 │   ├── config.ts          # App configuration
 │   ├── configManager.ts   # Configuration persistence
@@ -354,7 +374,9 @@ vibe-cli/
 ├── VIBE.md                # Project instructions for AI
 ├── dist/                  # Compiled output
 ├── logs/                  # Log files
+├── jest.config.js         # Jest configuration
 ├── tsconfig.json          # TypeScript configuration
+├── tsconfig.test.json     # TypeScript configuration for tests
 └── package.json           # Project metadata
 ```
 
@@ -388,3 +410,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes: `git commit -am 'Add some feature'`
 4. Push to the branch: `git push origin my-new-feature`
 5. Submit a pull request
+
+### Development Guidelines
+
+When contributing to this project, please follow these guidelines:
+
+- Write tests for new features and bug fixes
+- Ensure all tests pass by running `npm test`
+- Maintain or improve test coverage
+- Follow the established code style (enforced by ESLint and Prettier)
+- Commit messages should follow the format: `type: description` (e.g., `feat: add new tool`)
+- Pre-commit hooks will automatically format and lint your code before committing
+
+The project is set up with husky to run linters and formatters on pre-commit. If your commit fails due to linting issues, you can fix them with `npm run lint:fix` and `npm run format`.

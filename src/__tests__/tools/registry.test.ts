@@ -1,5 +1,5 @@
-import { ToolRegistry } from '../../tools/registry';
-import { BaseTool, ToolResult } from '../../tools/interface';
+import { ToolRegistry } from '../../tools/registry.js';
+import { BaseTool, ToolResult } from '../../tools/interface.js';
 
 // Mock the config module
 jest.mock('../../config', () => ({

@@ -1,4 +1,4 @@
-import { ListDirTool } from '../../../tools/filesystem/list-dir';
+import { ListDirTool } from '../../../tools/filesystem/list-dir.js';
 import fs from 'fs/promises';
 import path from 'path';
 
