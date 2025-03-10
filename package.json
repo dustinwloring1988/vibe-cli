@@ -1,0 +1,44 @@
+{
+  "name": "vibe-cli",
+  "version": "1.0.0",
+  "description": "A terminal-based AI coding agent powered by Ollama models, designed to assist with coding tasks directly from your terminal.",
+  "main": "dist/index.js",
+  "bin": {
+    "vibe": "./dist/bin/vibe.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bin/vibe.js",
+    "dev": "tsc && node dist/bin/vibe.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "jest"
+  },
+  "keywords": [
+    "cli",
+    "ai",
+    "coding",
+    "assistant",
+    "terminal",
+    "ollama"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/prompts": "^2.4.9",
+    "@types/yargs": "^17.0.33",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^9.22.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "prompts": "^2.4.2",
+    "yargs": "^17.7.2"
+  }
+}

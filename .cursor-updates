@@ -1,0 +1,5 @@
+- Initialized Node.js project with TypeScript, ESLint, and Prettier
+- Created CLI entry point with yargs for command handling
+- Implemented basic REPL interface with prompts library
+- Developed minimal queryAI function with streaming capability
+- Set up project structure and documentation

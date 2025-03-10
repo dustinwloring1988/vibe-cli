@@ -1,0 +1,9 @@
+- Always finalize with `npm run build`, `npm run lint --fix` and `npm run format` before commit. Fix errors; ignore warnings.
+- Log a one-line markdown summary in `.cursor-updates` after every interaction.
+- Commit using `git add .; git commit -m "..."; git push` with structured present-tense commit messages (e.g., `feat: add auth module`).
+- Maintain clean, well-structured code following ESLint and Prettier standards.
+- Functions have clear TypeScript types.
+- Use explicit types; avoid `any`.
+- Enable strict mode in `tsconfig.json`.
+- Update `.env.example` for new environment variables.
+- DO NOT use mock data
