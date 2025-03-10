@@ -4,6 +4,7 @@ import { config } from './config';
 import { toolRegistry, ToolError } from './tools';
 import { contextManager } from './context';
 import { sessionManager } from './session';
+import { promptManager, SystemState } from './prompt';
 
 /**
  * REPL (Read-Eval-Print Loop) interface for interactive sessions
@@ -12,6 +13,7 @@ export class Repl {
   private isRunning: boolean = false;
   private exitRequested: boolean = false;
   private messages: Message[] = [];
+  private systemState: SystemState = 'ready';
 
   // Command history navigation
   private historyIndex: number = -1;
@@ -26,6 +28,14 @@ export class Repl {
   }
 
   /**
+   * Set the current system state
+   * @param state - New system state
+   */
+  private setSystemState(state: SystemState): void {
+    this.systemState = state;
+  }
+
+  /**
    * Start the REPL session
    */
   public async start(): Promise<void> {
@@ -36,6 +46,7 @@ export class Repl {
 
     this.isRunning = true;
     this.exitRequested = false;
+    this.setSystemState('ready');
 
     // Initialize the context manager and session manager
     await Promise.all([
@@ -53,6 +64,7 @@ export class Repl {
     console.log('  /clear              - Clear the conversation history');
     console.log('  /exit               - Exit the REPL');
     console.log('  /history            - Show command history');
+    console.log('  /prompt [style]     - Show or set prompt style');
     console.log(
       '  /!<n>               - Recall and execute command at position n\n'
     );
@@ -60,6 +72,7 @@ export class Repl {
     try {
       await this.loop();
     } catch (error) {
+      this.setSystemState('error');
       console.error('Error in REPL session:', error);
     } finally {
       this.isRunning = false;
@@ -97,7 +110,7 @@ export class Repl {
         {
           type: 'text',
           name: 'input',
-          message: '> ',
+          message: promptManager.getPrompt(this.systemState),
           validate: value => value !== undefined && value.trim() !== '',
           initial:
             this.historyIndex >= 0 && this.historyIndex < commandHistory.length
@@ -151,111 +164,162 @@ export class Repl {
    * @param input Command input string
    */
   private async processCommand(input: string): Promise<void> {
-    // Check for history recall (e.g., /!5)
-    const historyRecallMatch = input.match(/^\/!(\d+)$/);
-    if (historyRecallMatch) {
-      const historyIndex = parseInt(historyRecallMatch[1], 10) - 1;
-      const commandHistory = sessionManager.getCommandHistory();
+    this.setSystemState('busy');
 
-      if (historyIndex >= 0 && historyIndex < commandHistory.length) {
-        const recalledCommand = commandHistory[historyIndex];
-        console.log(`Recalling command: ${recalledCommand}`);
+    try {
+      // Check for history recall (e.g., /!5)
+      const historyRecallMatch = input.match(/^\/!(\d+)$/);
+      if (historyRecallMatch) {
+        const historyIndex = parseInt(historyRecallMatch[1], 10) - 1;
+        const commandHistory = sessionManager.getCommandHistory();
 
-        // If it's a command, process it as a command
-        if (recalledCommand.startsWith('/')) {
-          return this.processCommand(recalledCommand);
-        } else {
-          // Otherwise process it as a message
-          return this.processMessage(recalledCommand);
-        }
-      } else {
-        console.log(`Invalid history index: ${historyIndex + 1}`);
-        return;
-      }
-    }
+        if (historyIndex >= 0 && historyIndex < commandHistory.length) {
+          const recalledCommand = commandHistory[historyIndex];
+          console.log(`Recalling command: ${recalledCommand}`);
 
-    // Split by space, but respect quoted strings
-    const parts = this.parseCommandLine(input);
-    const command = parts[0].substring(1).toLowerCase();
-    const args = parts.slice(1);
-
-    switch (command) {
-      case 'exit':
-        this.stop();
-        break;
-
-      case 'clear':
-        this.messages = this.messages.slice(0, 1); // Keep only the system message
-        console.log('Conversation history cleared.');
-        break;
-
-      case 'history':
-        this.displayCommandHistory();
-        break;
-
-      case 'tools':
-        const tools = toolRegistry.getAll();
-        console.log(`Available tools (${tools.length}):\n`);
-        tools.forEach(tool => {
-          console.log(`- ${tool.name}: ${tool.description}`);
-        });
-        break;
-
-      case 'tool':
-        if (args.length === 0) {
-          console.log('Usage: /tool <n> [args]');
-          return;
-        }
-
-        const toolName = args[0];
-        if (!toolRegistry.has(toolName)) {
-          console.log(
-            `Tool "${toolName}" not found. Use /tools to see available tools.`
-          );
-          return;
-        }
-
-        try {
-          // Parse tool arguments
-          const toolArgs: Record<string, unknown> = {};
-
-          if (toolName === 'listDir' && args.length > 1) {
-            // Special case for listDir: the second argument is the path
-            toolArgs.path = args[1];
-          } else if (toolName === 'readFile' && args.length > 1) {
-            // Special case for readFile: the second argument is the path
-            toolArgs.path = args[1];
-
-            // If there's a third argument, it's the encoding
-            if (args.length > 2) {
-              toolArgs.encoding = args[2];
-            }
+          // If it's a command, process it as a command
+          if (recalledCommand.startsWith('/')) {
+            return this.processCommand(recalledCommand);
           } else {
-            // Generic argument parsing for other tools
-            for (let i = 1; i < args.length; i++) {
-              const arg = args[i];
-              const [key, value] = arg.split('=');
-              if (key && value) {
-                toolArgs[key] = value;
+            // Otherwise process it as a message
+            return this.processMessage(recalledCommand);
+          }
+        } else {
+          console.log(`Invalid history index: ${historyIndex + 1}`);
+          this.setSystemState('error');
+          return;
+        }
+      }
+
+      // Split by space, but respect quoted strings
+      const parts = this.parseCommandLine(input);
+      const command = parts[0].substring(1).toLowerCase();
+      const args = parts.slice(1);
+
+      switch (command) {
+        case 'exit':
+          this.stop();
+          break;
+
+        case 'clear':
+          this.messages = this.messages.slice(0, 1); // Keep only the system message
+          console.log('Conversation history cleared.');
+          break;
+
+        case 'history':
+          this.displayCommandHistory();
+          break;
+
+        case 'prompt':
+          if (args.length === 0) {
+            // Display current prompt style
+            console.log(
+              `Current prompt style: ${config.prompt?.style || 'default'}`
+            );
+            console.log('Available styles: default, emoji, minimal, detailed');
+          } else {
+            const style = args[0].toLowerCase();
+            if (['default', 'emoji', 'minimal', 'detailed'].includes(style)) {
+              if (config.prompt) {
+                config.prompt.style = style as
+                  | 'default'
+                  | 'emoji'
+                  | 'minimal'
+                  | 'detailed';
+                console.log(`Prompt style set to: ${style}`);
+              } else {
+                console.log(
+                  'Unable to change prompt style: configuration not available'
+                );
+                this.setSystemState('error');
+              }
+            } else {
+              console.log(`Invalid style: ${style}`);
+              console.log(
+                'Available styles: default, emoji, minimal, detailed'
+              );
+              this.setSystemState('error');
+            }
+          }
+          break;
+
+        case 'tools':
+          const tools = toolRegistry.getAll();
+          console.log(`Available tools (${tools.length}):\n`);
+          tools.forEach(tool => {
+            console.log(`- ${tool.name}: ${tool.description}`);
+          });
+          break;
+
+        case 'tool':
+          if (args.length === 0) {
+            console.log('Usage: /tool <n> [args]');
+            this.setSystemState('error');
+            return;
+          }
+
+          const toolName = args[0];
+          if (!toolRegistry.has(toolName)) {
+            console.log(
+              `Tool "${toolName}" not found. Use /tools to see available tools.`
+            );
+            this.setSystemState('error');
+            return;
+          }
+
+          try {
+            // Parse tool arguments
+            const toolArgs: Record<string, unknown> = {};
+
+            if (toolName === 'listDir' && args.length > 1) {
+              // Special case for listDir: the second argument is the path
+              toolArgs.path = args[1];
+            } else if (toolName === 'readFile' && args.length > 1) {
+              // Special case for readFile: the second argument is the path
+              toolArgs.path = args[1];
+
+              // If there's a third argument, it's the encoding
+              if (args.length > 2) {
+                toolArgs.encoding = args[2];
+              }
+            } else {
+              // Generic argument parsing for other tools
+              for (let i = 1; i < args.length; i++) {
+                const arg = args[i];
+                const [key, value] = arg.split('=');
+                if (key && value) {
+                  toolArgs[key] = value;
+                }
               }
             }
-          }
 
-          console.log(`Executing tool "${toolName}"...`);
-          const result = await toolRegistry.execute(toolName, toolArgs);
-          console.log('Result:', JSON.stringify(result, null, 2));
-        } catch (error) {
-          if (error instanceof ToolError) {
-            console.error(`Tool error: ${error.message}`);
-          } else {
-            console.error(`Error executing tool: ${error}`);
+            console.log(`Executing tool "${toolName}"...`);
+            const result = await toolRegistry.execute(toolName, toolArgs);
+            console.log('Result:', JSON.stringify(result, null, 2));
+            this.setSystemState('ready');
+          } catch (error) {
+            this.setSystemState('error');
+            if (error instanceof ToolError) {
+              console.error(`Tool error: ${error.message}`);
+            } else {
+              console.error(`Error executing tool: ${error}`);
+            }
           }
-        }
-        break;
+          break;
 
-      default:
-        console.log(`Unknown command: ${command}`);
-        break;
+        default:
+          console.log(`Unknown command: ${command}`);
+          this.setSystemState('error');
+          break;
+      }
+
+      // If we got here without errors and didn't already update the state, set to ready
+      if (this.systemState === 'busy') {
+        this.setSystemState('ready');
+      }
+    } catch (error) {
+      this.setSystemState('error');
+      console.error('Error processing command:', error);
     }
   }
 
@@ -312,6 +376,8 @@ export class Repl {
    * @param prompt User message
    */
   private async processMessage(prompt: string): Promise<void> {
+    this.setSystemState('busy');
+
     // Define an update callback that handles streaming updates
     const onUpdate = (_content: string, _isDone: boolean) => {
       // We're not using the content here but it would be used
@@ -336,7 +402,10 @@ export class Repl {
         role: 'assistant',
         content: aiResponse,
       });
+
+      this.setSystemState('ready');
     } catch (error) {
+      this.setSystemState('error');
       if (error instanceof AIQueryError) {
         console.error('Error querying AI:', error.message);
       } else {

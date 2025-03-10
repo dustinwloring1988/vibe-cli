@@ -21,6 +21,21 @@ export interface Config {
     verbosity: string;
     useMarkdown: boolean;
   };
+  prompt?: {
+    style: 'default' | 'emoji' | 'minimal' | 'detailed';
+    colors: {
+      default: string;
+      ready: string;
+      busy: string;
+      error: string;
+    };
+    symbols: {
+      default: string;
+      ready: string;
+      busy: string;
+      error: string;
+    };
+  };
 }
 
 /**
@@ -37,6 +52,26 @@ export function getConfig(): Config {
         (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') ||
         'info',
       debug: process.env.DEBUG === 'true',
+    },
+    prompt: {
+      style:
+        (process.env.PROMPT_STYLE as
+          | 'default'
+          | 'emoji'
+          | 'minimal'
+          | 'detailed') || 'default',
+      colors: {
+        default: process.env.PROMPT_COLOR_DEFAULT || 'blue',
+        ready: process.env.PROMPT_COLOR_READY || 'green',
+        busy: process.env.PROMPT_COLOR_BUSY || 'yellow',
+        error: process.env.PROMPT_COLOR_ERROR || 'red',
+      },
+      symbols: {
+        default: process.env.PROMPT_SYMBOL_DEFAULT || '>',
+        ready: process.env.PROMPT_SYMBOL_READY || '✓',
+        busy: process.env.PROMPT_SYMBOL_BUSY || '⟳',
+        error: process.env.PROMPT_SYMBOL_ERROR || '✗',
+      },
     },
   };
 }
