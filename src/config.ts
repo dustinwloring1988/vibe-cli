@@ -16,6 +16,11 @@ export interface Config {
     logLevel: 'debug' | 'info' | 'warn' | 'error';
     debug: boolean;
   };
+  agent?: {
+    personality: string;
+    verbosity: string;
+    useMarkdown: boolean;
+  };
 }
 
 /**

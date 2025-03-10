@@ -8,3 +8,6 @@ export * from './read-file';
 export * from './write-file';
 export * from './create-file';
 export * from './delete-file';
+export * from './load-instructions';
+export * from './mkdir';
+export * from './move-file';

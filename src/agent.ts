@@ -3,6 +3,7 @@ import { queryAI, Message, Tool as AITool, QueryOptions } from './ai/query';
 import { config } from './config';
 import { toolRegistry, Tool, ToolError, suppressError } from './tools';
 import { contextManager } from './context';
+import { AgentPromptBuilder, AIPersonality, AIVerbosity } from './agent/index';
 
 /**
  * Start the Agent REPL
@@ -29,11 +30,24 @@ export class AgentRepl {
   private messages: Message[] = [];
   private availableTools: AITool[] = [];
   private debugMode: boolean = false;
+  private promptBuilder: AgentPromptBuilder;
 
   constructor() {
     // Check if debug mode is enabled
     this.debugMode =
       process.argv.includes('--debug') || process.argv.includes('-d');
+
+    // Create a prompt builder with configuration from command line or defaults
+    this.promptBuilder = new AgentPromptBuilder({
+      personality:
+        (config.agent?.personality as AIPersonality) || AIPersonality.HELPFUL,
+      verbosity: (config.agent?.verbosity as AIVerbosity) || AIVerbosity.MEDIUM,
+      useMarkdown:
+        config.agent?.useMarkdown !== undefined
+          ? config.agent.useMarkdown
+          : true,
+      includeToolGuidelines: true,
+    });
 
     // Initialize available tools
     this.initializeAvailableTools();
@@ -172,48 +186,8 @@ export class AgentRepl {
    * Build a system message that explains available tools to the AI
    */
   private buildSystemMessage(): string {
-    const tools = toolRegistry.getAll();
-
-    let message =
-      'You are an AI assistant with access to tools to help users with coding tasks.\n\n';
-    message +=
-      'When a user asks for information that requires accessing the filesystem, you MUST use the appropriate tool instead of making up a response.\n\n';
-    message += 'AVAILABLE TOOLS:\n\n';
-
-    tools.forEach(tool => {
-      message += `Tool: ${tool.name}\n`;
-      message += `Description: ${tool.description}\n`;
-
-      if (tool.name === 'listDir') {
-        message += 'Parameters: { "path": "directory_path_to_list" }\n';
-      } else if (tool.name === 'readFile') {
-        message +=
-          'Parameters: { "path": "file_path_to_read", "encoding": "utf8" }\n';
-      }
-
-      message += '\n';
-    });
-
-    message += 'IMPORTANT RULES:\n';
-    message += '1. ALWAYS use tools when asked about files or directories.\n';
-    message += '2. Never make up file contents or directory listings.\n';
-    message += '3. If you need to list files, use the listDir tool.\n';
-    message += '4. If you need to read a file, use the readFile tool.\n';
-    message += '5. Use tools without asking for permission from the user.\n';
-    message +=
-      '6. DO NOT mention tools explicitly in your conversation - just use them transparently.\n';
-    message +=
-      '7. When using tools, respond with a JSON object using the format:\n';
-    message += '```json\n';
-    message += 'tool_calls: [\n';
-    message += '  {\n';
-    message += '    "name": "toolName",\n';
-    message += '    "params": { "param1": "value1", "param2": "value2" }\n';
-    message += '  }\n';
-    message += ']\n';
-    message += '```\n';
-
-    return message;
+    // Use the prompt builder to generate the system message
+    return this.promptBuilder.buildSystemMessage(toolRegistry.getAll());
   }
 
   /**

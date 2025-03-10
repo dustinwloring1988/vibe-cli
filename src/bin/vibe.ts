@@ -35,10 +35,45 @@ async function main(): Promise<void> {
     .command(
       'agent',
       'Start an interactive session with an AI agent that can use tools',
-      {},
-      async () => {
+      yargs => {
+        return yargs
+          .option('personality', {
+            type: 'string',
+            describe: 'Personality of the AI assistant',
+            choices: ['helpful', 'concise', 'detailed', 'teaching'],
+            default: 'helpful',
+          })
+          .option('verbosity', {
+            type: 'string',
+            describe: 'Verbosity level of the AI assistant',
+            choices: ['low', 'medium', 'high'],
+            default: 'medium',
+          })
+          .option('markdown', {
+            type: 'boolean',
+            describe: 'Whether to use markdown formatting in responses',
+            default: true,
+          })
+          .option('debug', {
+            alias: 'd',
+            type: 'boolean',
+            describe: 'Enable debug mode',
+            default: false,
+          });
+      },
+      async argv => {
         console.log('Starting agent session with tools...');
         console.log(`Using model: ${config.ollama.model}`);
+        console.log(`Personality: ${argv.personality}`);
+        console.log(`Verbosity: ${argv.verbosity}`);
+        console.log(`Markdown: ${argv.markdown ? 'enabled' : 'disabled'}`);
+
+        // Store the options in the config for the agent to use
+        config.agent = {
+          personality: argv.personality as string,
+          verbosity: argv.verbosity as string,
+          useMarkdown: argv.markdown as boolean,
+        };
 
         await startAgentRepl();
       }
