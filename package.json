@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A terminal-based AI coding agent powered by Ollama models, designed to assist with coding tasks directly from your terminal.",
   "main": "dist/index.js",
+  "type": "module",
   "bin": {
     "vibe": "./dist/bin/vibe.js"
   },
@@ -14,7 +15,14 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "jest",
-    "test:logs": "tsc && node dist/bin/test-logs.js"
+    "test:logs": "tsc && node dist/bin/test-logs.js",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "keywords": [
     "cli",
@@ -35,6 +43,8 @@
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.1",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   },
