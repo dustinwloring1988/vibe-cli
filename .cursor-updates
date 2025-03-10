@@ -17,3 +17,5 @@
 - Enhanced agent mode with proper JSON tool calling for llama3.1:latest model
 - Implemented multiple fallback approaches for tool calling
 - Added debug mode for diagnosing AI interactions
+- Fixed tool call format parsing to handle llama3.1's specific JSON structure
+- Added robust multi-strategy parsing to ensure tool calls are properly detected

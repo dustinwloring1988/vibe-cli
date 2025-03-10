@@ -183,7 +183,15 @@ export class AgentRepl {
     message +=
       '6. DO NOT mention tools explicitly in your conversation - just use them transparently.\n';
     message +=
-      '7. When using tools, format your API response using JSON tool_calls.\n';
+      '7. When using tools, respond with a JSON object using the format:\n';
+    message += '```json\n';
+    message += 'tool_calls: [\n';
+    message += '  {\n';
+    message += '    "name": "toolName",\n';
+    message += '    "params": { "param1": "value1", "param2": "value2" }\n';
+    message += '  }\n';
+    message += ']\n';
+    message += '```\n';
 
     return message;
   }
@@ -299,22 +307,9 @@ export class AgentRepl {
         responseText += content;
         process.stdout.write(content);
 
-        // Check for tool calls in the response
-        if (isDone && responseText) {
-          try {
-            // See if the response contains tool calls marker
-            if (
-              responseText.includes('```json') &&
-              responseText.includes('tool_calls')
-            ) {
-              // This will be handled later in processToolCallsInText
-            }
-          } catch (e) {
-            // Not a tool call, proceed with normal response
-            if (this.debugMode) {
-              console.log('\n[Debug] Not a valid tool call JSON:', e);
-            }
-          }
+        // For debugging - show actual content received
+        if (this.debugMode && content) {
+          console.log('\n[Debug] Content chunk:', content);
         }
       };
 
@@ -328,7 +323,7 @@ export class AgentRepl {
       // Query the AI with our messages
       await queryAI(this.messages, onUpdate, queryOptions);
 
-      // Check for tool calls in text format (code blocks)
+      // Check for tool calls in text format
       const toolCallsDetected = await this.processToolCallsInText(responseText);
 
       if (!toolCallsDetected) {
@@ -369,44 +364,156 @@ export class AgentRepl {
   }
 
   /**
-   * Process tool calls within code blocks in text
+   * Process tool calls within the text
    * @param text The response text to analyze
    * @returns True if tool calls were processed, false otherwise
    */
   private async processToolCallsInText(text: string): Promise<boolean> {
-    // Look for code blocks that might contain tool calls
+    // Debug the full text to check what we're getting
+    if (this.debugMode) {
+      console.log('\n[Debug] Full response text:', text);
+    }
+
+    // Method 1: Look for ```json with tool_calls format
     const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/g;
     let match;
-    let toolCallsProcessed = false;
 
     while ((match = codeBlockRegex.exec(text)) !== null) {
-      const codeContent = match[1];
-      try {
-        // Try to parse the content as JSON
-        const parsedContent = JSON.parse(codeContent);
+      const codeContent = match[1].trim();
 
-        // Check if it's a tool call
-        if (
-          parsedContent.tool_calls &&
-          Array.isArray(parsedContent.tool_calls)
-        ) {
-          for (const toolCall of parsedContent.tool_calls) {
-            if (toolCall.name && toolCall.parameters) {
-              // Process this tool call
-              await this.processToolCall(toolCall.name, toolCall.parameters);
-              toolCallsProcessed = true;
+      if (this.debugMode) {
+        console.log('\n[Debug] Code block content:', codeContent);
+      }
+
+      // Check for tool_calls format
+      const toolCallsMatch = /tool_calls\s*:\s*\[\s*({[\s\S]*?})\s*\]/i.exec(
+        codeContent
+      );
+      if (toolCallsMatch) {
+        const toolCall = toolCallsMatch[1].trim();
+        try {
+          // Extract the name and params
+          const nameMatch = /"name"\s*:\s*"([^"]+)"/.exec(toolCall);
+          const paramsMatch = /"params"\s*:\s*({[\s\S]*?})(?:,|\s*$)/.exec(
+            toolCall
+          );
+
+          if (nameMatch && paramsMatch) {
+            const name = nameMatch[1];
+            // Try to parse the params as JSON
+            const paramsStr = paramsMatch[1].replace(/'/g, '"'); // Replace single quotes with double quotes
+            try {
+              const params = JSON.parse(paramsStr);
+              await this.processToolCall(name, params);
+              return true;
+            } catch (e) {
+              if (this.debugMode) {
+                console.log('\n[Debug] Error parsing params:', e);
+                console.log('Params string:', paramsStr);
+              }
+
+              // Try alternate parsing if JSON parse fails
+              const pathMatch = /"path"\s*:\s*"([^"]+)"/.exec(paramsStr);
+              if (pathMatch) {
+                const path = pathMatch[1];
+                await this.processToolCall(name, { path });
+                return true;
+              }
             }
           }
-        }
-      } catch (e) {
-        // Not valid JSON or not a tool call
-        if (this.debugMode) {
-          console.log('\n[Debug] Not a valid tool call in code block:', e);
+        } catch (e) {
+          if (this.debugMode) {
+            console.log(
+              '\n[Debug] Error processing tool call from code block:',
+              e
+            );
+          }
         }
       }
     }
 
-    return toolCallsProcessed;
+    // Method 2: Direct JSON parsing of full content or parts
+    try {
+      if (
+        text.includes('tool_calls') &&
+        (text.includes('"name"') || text.includes('"params"'))
+      ) {
+        // Try to find a valid JSON object with tool_calls
+        const lines = text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (
+            line.includes('tool_calls') ||
+            line.includes('"name"') ||
+            line.includes('"params"')
+          ) {
+            // Try to find a JSON object starting from this line
+            for (let j = 1; j <= 10; j++) {
+              // Try various lengths
+              const potentialJson = lines.slice(i, i + j).join('\n');
+              try {
+                // Try adding braces if they're missing
+                const jsonToTry = potentialJson.startsWith('{')
+                  ? potentialJson
+                  : `{${potentialJson}}`;
+
+                const parsed = JSON.parse(jsonToTry);
+
+                if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
+                  for (const call of parsed.tool_calls) {
+                    if (call.name && call.params) {
+                      await this.processToolCall(call.name, call.params);
+                      return true;
+                    }
+                  }
+                }
+              } catch (e) {
+                // Silently continue trying
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (this.debugMode) {
+        console.log('\n[Debug] Error parsing JSON from text:', e);
+      }
+    }
+
+    // Method 3: Simple regex-based tool call detection
+    const toolCallRegex =
+      /"name"\s*:\s*"([^"]+)"[\s\S]*?"params"\s*:\s*({[\s\S]*?})/g;
+    let toolCallMatch;
+
+    while ((toolCallMatch = toolCallRegex.exec(text)) !== null) {
+      try {
+        const name = toolCallMatch[1];
+        const paramsText = toolCallMatch[2];
+
+        // Try to parse the params as JSON
+        try {
+          const fixedParams = paramsText
+            .replace(/'/g, '"')
+            .replace(/(\w+):/g, '"$1":');
+          const params = JSON.parse(fixedParams);
+          await this.processToolCall(name, params);
+          return true;
+        } catch (e) {
+          // If parsing fails, try to extract path directly
+          const pathMatch = /"path"\s*:\s*"?([^",}]+)"?/.exec(paramsText);
+          if (pathMatch) {
+            await this.processToolCall(name, { path: pathMatch[1] });
+            return true;
+          }
+        }
+      } catch (e) {
+        if (this.debugMode) {
+          console.log('\n[Debug] Error processing regex-based tool call:', e);
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -428,7 +535,9 @@ export class AgentRepl {
       // Create a simplified message to focus on the tool calling
       const toolMessage: Message = {
         role: 'user',
-        content: `Use the appropriate tool to answer this question: "${this.messages[this.messages.length - 1].content}"`,
+        content: `Use the appropriate tool to answer this question: "${
+          this.messages[this.messages.length - 1].content
+        }"`,
       };
 
       // Create a new message array with the system message and the tool message
@@ -447,24 +556,14 @@ export class AgentRepl {
           // Don't print the JSON directly
           if (isDone && responseText) {
             try {
-              const parsedResponse = JSON.parse(responseText);
-              if (
-                parsedResponse.tool_calls &&
-                parsedResponse.tool_calls.length > 0
-              ) {
-                // Process each tool call
-                for (const toolCall of parsedResponse.tool_calls) {
-                  this.processToolCall(
-                    toolCall.name,
-                    toolCall.parameters
-                  ).catch(e => {
-                    console.error('Error processing tool call:', e);
-                  });
-                }
-              } else {
-                // No tool calls found, so print the response
-                console.log(responseText);
+              if (this.debugMode) {
+                console.log('\n[Debug] Full fallback response:', responseText);
               }
+
+              // Try various parsing strategies
+              this.processToolCallsInText(responseText).catch(e => {
+                console.error('Error processing fallback tool call:', e);
+              });
             } catch (e) {
               // Not JSON, so print directly
               console.log(responseText);
@@ -549,7 +648,9 @@ export class AgentRepl {
       // Add error message to conversation history
       this.messages.push({
         role: 'user',
-        content: `Tool Error:\n\n${error instanceof ToolError ? error.message : String(error)}`,
+        content: `Tool Error:\n\n${
+          error instanceof ToolError ? error.message : String(error)
+        }`,
       });
 
       // Get AI's error response
