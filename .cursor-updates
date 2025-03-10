@@ -7,3 +7,7 @@
 - Added configuration management with environment variables
 - Implemented error handling for AI queries
 - Added test-connection command for verifying Ollama connectivity
+- Designed and implemented Tool interface with clear typing
+- Created tool registry for managing and accessing tools
+- Implemented filesystem tools (listDir, readFile) with security checks
+- Added command parsing in REPL for executing tools

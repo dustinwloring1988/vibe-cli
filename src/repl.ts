@@ -1,6 +1,7 @@
 import prompts from 'prompts';
 import { queryAI, Message, MessageCallback, AIQueryError } from './ai/query';
 import { config } from './config';
+import { toolRegistry, ToolError } from './tools';
 
 /**
  * REPL (Read-Eval-Print Loop) interface for interactive sessions
@@ -35,6 +36,11 @@ export class Repl {
     console.log(
       `Using model: ${config.ollama.model} at ${config.ollama.apiUrl}\n`
     );
+    console.log('Available commands:');
+    console.log('  /tool <name> [args] - Execute a tool');
+    console.log('  /tools              - List available tools');
+    console.log('  /clear              - Clear the conversation history');
+    console.log('  /exit               - Exit the REPL\n');
 
     try {
       await this.loop();
@@ -88,8 +94,147 @@ export class Repl {
         break;
       }
 
-      await this.processInput(input);
+      // Check if the input is a command
+      if (input.startsWith('/')) {
+        await this.processCommand(input);
+      } else {
+        await this.processInput(input);
+      }
     }
+  }
+
+  /**
+   * Process a command
+   * @param input Command input string
+   */
+  private async processCommand(input: string): Promise<void> {
+    // Split by space, but respect quoted strings
+    const parts = this.parseCommandLine(input);
+    const command = parts[0].substring(1).toLowerCase();
+    const args = parts.slice(1);
+
+    switch (command) {
+      case 'exit':
+        this.stop();
+        break;
+
+      case 'clear':
+        this.messages = this.messages.slice(0, 1); // Keep only the system message
+        console.log('Conversation history cleared.');
+        break;
+
+      case 'tools':
+        const tools = toolRegistry.getAll();
+        console.log(`Available tools (${tools.length}):\n`);
+        tools.forEach(tool => {
+          console.log(`- ${tool.name}: ${tool.description}`);
+        });
+        break;
+
+      case 'tool':
+        if (args.length === 0) {
+          console.log('Usage: /tool <name> [args]');
+          return;
+        }
+
+        const toolName = args[0];
+        if (!toolRegistry.has(toolName)) {
+          console.log(
+            `Tool "${toolName}" not found. Use /tools to see available tools.`
+          );
+          return;
+        }
+
+        try {
+          // Parse tool arguments
+          const toolArgs: Record<string, unknown> = {};
+
+          if (toolName === 'listDir' && args.length > 1) {
+            // Special case for listDir: the second argument is the path
+            toolArgs.path = args[1];
+          } else if (toolName === 'readFile' && args.length > 1) {
+            // Special case for readFile: the second argument is the path
+            toolArgs.path = args[1];
+
+            // If there's a third argument, it's the encoding
+            if (args.length > 2) {
+              toolArgs.encoding = args[2];
+            }
+          } else {
+            // Generic argument parsing for other tools
+            for (let i = 1; i < args.length; i++) {
+              const arg = args[i];
+              const [key, value] = arg.split('=');
+              if (key && value) {
+                toolArgs[key] = value;
+              }
+            }
+          }
+
+          console.log(`Executing tool "${toolName}"...`);
+          const result = await toolRegistry.execute(toolName, toolArgs);
+          console.log('Result:', JSON.stringify(result, null, 2));
+        } catch (error) {
+          if (error instanceof ToolError) {
+            console.error(`Tool error: ${error.message}`);
+          } else {
+            console.error(`Error executing tool: ${error}`);
+          }
+        }
+        break;
+
+      default:
+        console.log(`Unknown command: ${command}`);
+        break;
+    }
+  }
+
+  /**
+   * Parse a command line into arguments, respecting quoted strings
+   * @param input Command line input
+   * @returns Array of arguments
+   */
+  private parseCommandLine(input: string): string[] {
+    const args: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let escapeNext = false;
+
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+
+      if (escapeNext) {
+        current += char;
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"' || char === "'") {
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (char === ' ' && !inQuotes) {
+        if (current) {
+          args.push(current);
+          current = '';
+        }
+        continue;
+      }
+
+      current += char;
+    }
+
+    if (current) {
+      args.push(current);
+    }
+
+    return args;
   }
 
   /**

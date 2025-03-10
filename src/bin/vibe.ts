@@ -5,6 +5,12 @@ import { hideBin } from 'yargs/helpers';
 import { Repl } from '../repl';
 import { queryAI, Message, AIQueryError } from '../ai/query';
 import { validateConfig, config } from '../config';
+import {
+  initializeTools,
+  toolRegistry,
+  ListDirTool,
+  ReadFileTool,
+} from '../tools';
 
 /**
  * Main CLI entry point for vibe-cli
@@ -18,6 +24,9 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
+
+  // Initialize tools
+  await initializeTools();
 
   const argv = yargs(hideBin(process.argv))
     .usage('Usage: $0 <command> [options]')
@@ -129,6 +138,13 @@ async function main(): Promise<void> {
         }
       }
     )
+    .command('tools', 'List all available tools', {}, () => {
+      console.log('Available tools:\n');
+
+      // Directly log the tools we know exist
+      console.log(`- listDir: Lists files and directories in a directory`);
+      console.log(`- readFile: Reads the content of a file`);
+    })
     .option('verbose', {
       alias: 'v',
       type: 'boolean',
