@@ -11,6 +11,7 @@ import {
   ListDirTool,
   ReadFileTool,
 } from '../tools';
+import { AgentRepl } from '../agent';
 
 /**
  * Main CLI entry point for vibe-cli
@@ -40,6 +41,18 @@ async function main(): Promise<void> {
 
         const repl = new Repl();
         await repl.start();
+      }
+    )
+    .command(
+      'agent',
+      'Start an interactive session with an AI agent that can use tools',
+      {},
+      async () => {
+        console.log('Starting AI agent session...');
+        console.log(`Using model: ${config.ollama.model}`);
+
+        const agent = new AgentRepl();
+        await agent.start();
       }
     )
     .command(

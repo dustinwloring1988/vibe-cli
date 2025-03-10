@@ -11,3 +11,6 @@
 - Created tool registry for managing and accessing tools
 - Implemented filesystem tools (listDir, readFile) with security checks
 - Added command parsing in REPL for executing tools
+- Implemented agent mode where AI can autonomously use tools
+- Created tool call format parsing and execution in agent mode
+- Added conversation history management with tool calls and results
