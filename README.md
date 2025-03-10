@@ -10,6 +10,7 @@ A terminal-based AI coding agent powered by Ollama models, designed to assist wi
 - File system operations with security controls
 - Streaming responses for real-time feedback
 - Simple and intuitive command-line interface
+- Customizable REPL prompt with visual state indicators
 
 ## Installation
 
@@ -62,7 +63,8 @@ In the chat session, you can:
 - Type your questions or commands
 - Press Ctrl+C or type `/exit` to end the session
 - Type `/tools` to see available tools
-- Type `/tool <name> [args]` to execute a tool
+- Type `/tool <n> [args]` to execute a tool
+- Type `/prompt [style]` to view or change prompt style
 
 ### Agent Mode
 
@@ -126,6 +128,8 @@ vibe-cli/
 │   ├── config.ts          # App configuration
 │   ├── agent.ts           # Agent REPL implementation
 │   ├── repl.ts            # Interactive REPL implementation
+│   ├── prompt.ts          # Customizable prompt system
+│   ├── session.ts         # Session management
 │   └── index.ts           # Main exports
 ├── VIBE.md                # Project instructions for AI
 ├── dist/                  # Compiled output
@@ -141,6 +145,29 @@ The application can be configured using environment variables:
 - `OLLAMA_MODEL` - Name of the Ollama model to use (default: `llama3`)
 - `DEBUG` - Enable debug mode (default: `false`)
 - `LOG_LEVEL` - Set logging level (default: `info`)
+
+### Prompt Customization
+
+You can customize the REPL prompt appearance using the following environment variables:
+
+- `PROMPT_STYLE` - Prompt style to use (options: `default`, `emoji`, `minimal`, `detailed`)
+- `PROMPT_COLOR_DEFAULT` - Color for the default state (default: `blue`)
+- `PROMPT_COLOR_READY` - Color for the ready state (default: `green`)
+- `PROMPT_COLOR_BUSY` - Color for the busy state (default: `yellow`) 
+- `PROMPT_COLOR_ERROR` - Color for the error state (default: `red`)
+- `PROMPT_SYMBOL_DEFAULT` - Symbol for the default state (default: `>`)
+- `PROMPT_SYMBOL_READY` - Symbol for the ready state (default: `✓`)
+- `PROMPT_SYMBOL_BUSY` - Symbol for the busy state (default: `⟳`)
+- `PROMPT_SYMBOL_ERROR` - Symbol for the error state (default: `✗`)
+
+You can also change the prompt style during a session using the `/prompt` command:
+
+```bash
+/prompt detailed  # Change to detailed style showing model and state
+/prompt emoji     # Change to emoji-only style
+/prompt minimal   # Change to minimal style
+/prompt default   # Change to default style
+```
 
 ## License
 
