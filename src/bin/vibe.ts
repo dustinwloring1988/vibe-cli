@@ -5,13 +5,20 @@ import { hideBin } from 'yargs/helpers';
 import { Repl } from '../repl';
 import { startAgentRepl } from '../agent';
 import { queryAI, Message, AIQueryError } from '../ai/query';
-import { validateConfig, config } from '../config';
+import { validateConfig, config, initializeConfig } from '../config';
 import { initializeTools } from '../tools';
+import { handleConfigCommand } from './config-cmd';
+import { handleSessionCommand } from './session-cmd';
+import { sessionManager } from '../session';
 
 /**
  * Main CLI entry point for vibe-cli
  */
 async function main(): Promise<void> {
+  // Initialize configuration and session
+  await initializeConfig();
+  await sessionManager.initialize();
+
   // Validate configuration
   if (!(await validateConfig())) {
     process.exit(1);
@@ -76,6 +83,87 @@ async function main(): Promise<void> {
         };
 
         await startAgentRepl();
+      }
+    )
+    .command(
+      'config',
+      'Manage vibe-cli configuration',
+      yargs => {
+        return yargs
+          .option('action', {
+            type: 'string',
+            describe: 'Action to perform',
+            choices: ['view', 'edit', 'reset', 'path'],
+            default: 'view',
+          })
+          .option('property', {
+            type: 'string',
+            describe: 'Configuration property path (e.g. "ollama.apiUrl")',
+          })
+          .option('value', {
+            type: 'string',
+            describe: 'New value for the property',
+          })
+          .option('editor', {
+            type: 'boolean',
+            describe: 'Open configuration in editor',
+            default: false,
+          })
+          .example('$0 config', 'View entire configuration')
+          .example(
+            '$0 config --action view --property ollama.apiUrl',
+            'View specific configuration value'
+          )
+          .example(
+            '$0 config --action edit --property ollama.apiUrl --value http://localhost:11434/api',
+            'Set configuration value'
+          )
+          .example(
+            '$0 config --action edit --editor',
+            'Edit configuration in text editor'
+          )
+          .example(
+            '$0 config --action reset',
+            'Reset configuration to defaults'
+          )
+          .example('$0 config --action path', 'Show configuration file path');
+      },
+      async args => {
+        await handleConfigCommand(args);
+      }
+    )
+    .command(
+      'session',
+      'Manage vibe-cli sessions',
+      yargs => {
+        return yargs
+          .option('action', {
+            type: 'string',
+            describe: 'Action to perform',
+            choices: ['info', 'list-backups', 'restore', 'clear', 'backup'],
+            default: 'info',
+          })
+          .option('path', {
+            type: 'string',
+            describe: 'Path to session backup file (for restore action)',
+          })
+          .example('$0 session', 'Show current session information')
+          .example(
+            '$0 session --action list-backups',
+            'List available session backups'
+          )
+          .example(
+            '$0 session --action restore --path <backup-path>',
+            'Restore session from backup'
+          )
+          .example('$0 session --action clear', 'Clear conversation history')
+          .example(
+            '$0 session --action backup',
+            'Create a backup of the current session'
+          );
+      },
+      async args => {
+        await handleSessionCommand(args);
       }
     )
     .command(
@@ -184,19 +272,34 @@ async function main(): Promise<void> {
     .alias('version', 'V')
     .demandCommand(1, 'You need to specify a command')
     .epilog(
-      'For more information, visit https://github.com/yourusername/vibe-cli'
+      'For more information, visit https://github.com/dustinwloring1988/vibe-cli'
     )
     .parse();
 }
 
+// Handle cleanup for graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down...');
+  sessionManager.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\nShutting down...');
+  sessionManager.close();
+  process.exit(0);
+});
+
 // Handle errors
 process.on('unhandledRejection', error => {
   console.error('Unhandled rejection:', error);
+  sessionManager.close();
   process.exit(1);
 });
 
 // Run the CLI
 main().catch(error => {
   console.error('Error:', error);
+  sessionManager.close();
   process.exit(1);
 });
