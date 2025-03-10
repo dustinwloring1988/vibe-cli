@@ -19,3 +19,4 @@
 - Added debug mode for diagnosing AI interactions
 - Developed loader for project instructions from VIBE.md file
 - Integrated context manager to enhance AI messages with project instructions
+- Updated README with current features, correct GitHub username, and improved documentation
